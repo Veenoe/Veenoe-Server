@@ -7,7 +7,7 @@ from app.db.models import LLMEvaluation, Message
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field # Use Langchain's Pydantic
+from pydantic import BaseModel, Field
 
 # --- 1. Define the LLM and Output Structure ---
 

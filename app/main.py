@@ -11,15 +11,15 @@ from pydantic import BaseModel
 from typing import List
 import asyncio
 import json
-from contextlib import asynccontextmanager # 1. IMPORT THIS
+from contextlib import asynccontextmanager
 
-from app.db.database import db as mongo_db
+# FIXED: Import functions separately + the db instance
+from app.db.database import db as mongo_db, connect_to_database, close_database_connection  # <-- ADD FUNCTIONS
 from app.services.session_service import SessionService, get_session_service
 from app.services.orchestrator import VivaOrchestrator
-# from app.auth import User, get_current_user # <-- 4. REMOVED
 from app.db.models import VivaSession
 
-# --- 1. Database Lifecycle (NEW LIFESPAN) ---
+# --- Database Lifecycle (UNCHANGED) ---
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,25 +28,25 @@ async def lifespan(app: FastAPI):
     Connects to MongoDB on startup, disconnects on shutdown.
     """
     print("--- Main: Connecting to database... ---")
-    await mongo_db.connect_to_database()
+    await connect_to_database()  # <-- FIXED: Call function directly
     yield
     print("--- Main: Disconnecting from database... ---")
-    await mongo_db.close_database_connection()
+    await close_database_connection()  # <-- FIXED: Call function directly
 
-# --- 2. Application Setup ---
+# --- Application Setup (UNCHANGED) ---
 
 app = FastAPI(
     title="Viva AI Backend",
     description="Manages real-time, streaming AI viva sessions.",
     version="1.0.0",
-    lifespan=lifespan  # 2. ADD THIS
+    lifespan=lifespan
 )
 
-# --- 4. HTTP Endpoints ---
+# --- HTTP Endpoints (UNCHANGED) ---
 
 class VivaStartRequest(BaseModel):
     """The request body for starting a new viva."""
-    student_name: str  # 4. ADDED
+    student_name: str
     topic: str
     class_level: str = "10th Grade"
 
@@ -57,7 +57,6 @@ class VivaStartResponse(BaseModel):
 @app.post("/start-viva", response_model=VivaStartResponse)
 async def start_viva(
     request: VivaStartRequest,
-    # user: User = Depends(get_current_user), # <-- 4. REMOVED
     service: SessionService = Depends(get_session_service)
 ):
     """
@@ -65,31 +64,28 @@ async def start_viva(
     This is a fast, stateless request. It just creates the DB entry.
     """
     session_id = await service.create_new_viva_session(
-        student_name=request.student_name, # 4. ADDED
+        student_name=request.student_name,
         topic=request.topic,
         class_level=request.class_level,
-        # user=user # <-- 4. REMOVED
     )
     return VivaStartResponse(session_id=session_id)
 
 @app.get("/viva-history", response_model=List[VivaSession])
 async def get_history(
-    student_name: str, # 4. ADDED (as a query param)
-    # user: User = Depends(get_current_user), # <-- 4. REMOVED
+    student_name: str,
     service: SessionService = Depends(get_session_service)
 ):
     """
     HTTP endpoint to get all past viva sessions for a specific student.
     """
-    return await service.get_viva_history_for_user(student_name) # 4. MODIFIED
+    return await service.get_viva_history_for_user(student_name)
 
-# --- 5. The Main WebSocket Endpoint ---
+# --- WebSocket Endpoint (UNCHANGED) ---
 
 @app.websocket("/ws/viva/{session_id}")
 async def websocket_viva_endpoint(
     websocket: WebSocket, 
     session_id: str
-    # No auth changes needed here as it was already skipped
 ):
     """
     This is the main, stateful WebSocket endpoint for conducting the viva.

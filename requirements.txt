@@ -8,3 +8,5 @@ websockets
 langchain
 langchain-google-genai
 langchain-core
+pydantic>=2.5
+pydantic-core>=2.14
