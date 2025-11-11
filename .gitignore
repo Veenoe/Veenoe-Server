@@ -1,0 +1,21 @@
+Virtual Environment
+
+.venv/
+venv/
+pycache/
+*.pyc
+
+IDE / OS
+
+.vscode/
+.idea/
+.DS_Store
+
+Secrets
+
+.env
+*.env.local
+
+Uvicorn
+
+.uvicorn.log

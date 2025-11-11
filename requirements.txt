@@ -1,0 +1,10 @@
+fastapi[all]
+uvicorn[standard]
+motor[asyncio]
+python-dotenv
+sarvamai
+google-generativeai
+websockets
+langchain
+langchain-google-genai
+langchain-core
