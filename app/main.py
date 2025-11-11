@@ -7,6 +7,7 @@ from fastapi import (
     Depends,
     status
 )
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 import asyncio
@@ -40,6 +41,23 @@ app = FastAPI(
     description="Manages real-time, streaming AI viva sessions.",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# --- 2. ADD THE CORS MIDDLEWARE ---
+# This is the standard, secure way to handle this in production.
+# We explicitly list the origins that are allowed to talk to our API.
+
+origins = [
+    "http://localhost:3000", # The origin for your Next.js dev server
+    # "https://your-production-domain.com", # TODO: Add your production frontend URL here
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allows all headers
 )
 
 # --- HTTP Endpoints (UNCHANGED) ---

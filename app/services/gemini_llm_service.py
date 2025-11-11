@@ -20,14 +20,13 @@ class LLMEvaluationOutput(BaseModel):
 # Initialize the LLM
 # We use .with_structured_output to make JSON parsing reliable
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro-latest",
+    # Use a stable model identifier available in your environment
+    model="gemini-2.5-flash",
     google_api_key=settings.GOOGLE_API_KEY,
     temperature=0.7
 ).with_structured_output(LLMEvaluationOutput)
 
-# Initialize the JSON parser
-# This is technically redundant with .with_structured_output,
-# but we keep it for clarity in the chain.
+# Initialize the JSON parser (kept for clarity)
 parser = JsonOutputParser(pydantic_object=LLMEvaluationOutput)
 
 # --- 2. Prompt Templates ---
@@ -100,14 +99,20 @@ async def get_ai_first_question(topic: str, class_level: str) -> LLMEvaluation:
         "class_level": class_level
     })
     
-    # In the first question, there is no "evaluation", so we fake it.
-    response_model.evaluation = "Let's begin." 
+    # In the first question, there is no "evaluation", so we provide a short placeholder.
+    response_model.evaluation = "Let's begin."
     
-    print(f"--- LLM Service: Got first question: {response_model.new_question[:30]}... ---")
+    print(f"--- LLM Service: Got first question: {response_model.new_question[:60]}... ---")
     
-    # Convert from Langchain's Pydantic model to our app's Pydantic model
-    return LLMEvaluation.model_validate(response_model)
-
+    # Convert from LangChain's Pydantic model to our app's Pydantic model
+    # IMPORTANT: convert to a plain dict first to satisfy model_validate's input expectations.
+    try:
+        response_dict = response_model.model_dump()
+        return LLMEvaluation.model_validate(response_dict)
+    except Exception as e:
+        # Provide clear logs for debugging if validation fails
+        print(f"--- LLM Service: Error validating first question response! {e} ---")
+        raise
 
 async def get_ai_evaluation(
     topic: str, 
@@ -118,7 +123,7 @@ async def get_ai_evaluation(
     """
     Gets an evaluation and the next question from the LLM.
     """
-    print(f"--- LLM Service: Evaluating answer: {student_answer[:30]}... ---")
+    print(f"--- LLM Service: Evaluating answer: {student_answer[:60]}... ---")
     
     prompt_template = ChatPromptTemplate.from_template(
         template=EVALUATION_PROMPT,
@@ -136,8 +141,13 @@ async def get_ai_evaluation(
         "student_answer": student_answer
     })
     
-    print(f"--- LLM Service: Got evaluation: {response_model.evaluation[:30]}... ---")
-    print(f"--- LLM Service: Got next question: {response_model.new_question[:30]}... ---")
+    print(f"--- LLM Service: Got evaluation: {response_model.evaluation[:60]}... ---")
+    print(f"--- LLM Service: Got next question: {response_model.new_question[:60]}... ---")
 
-    # Convert from Langchain's Pydantic model to our app's Pydantic model
-    return LLMEvaluation.model_validate(response_model)
+    # Convert from LangChain's Pydantic model to our app's Pydantic model
+    try:
+        response_dict = response_model.model_dump()
+        return LLMEvaluation.model_validate(response_dict)
+    except Exception as e:
+        print(f"--- LLM Service: Error validating evaluation response! {e} ---")
+        raise

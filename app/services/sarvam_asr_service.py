@@ -19,19 +19,26 @@ class SarvamASRService:
         # We will configure these in the connect() call
         self.input_audio_codec = "pcm" # We are sending raw PCM (L16)
         self.sample_rate = 16000 # Must match the client
+        
+        # --- FIX: Store the context manager ---
+        self.ws_context_manager = None
 
     async def connect(self, language_code: str = "en-IN"):
         try:
             # We configure the connection based on the docs
-            self.ws = await self.client.speech_to_text_streaming.connect(
+            # --- FIX: We create the context manager but DON'T await it ---
+            self.ws_context_manager = self.client.speech_to_text_streaming.connect(
                 language_code=language_code,
                 model="saarika:v2.5",
                 high_vad_sensitivity=True,
                 vad_signals=True,
-                # --- Add these based on docs ---
                 sample_rate=self.sample_rate,
                 input_audio_codec=self.input_audio_codec
             )
+            
+            # --- FIX: We manually enter the context and store the ws ---
+            self.ws = await self.ws_context_manager.__aenter__()
+            
             self._is_connected = True
             print(f"--- ASR Service: Connected to Sarvam (codec: {self.input_audio_codec}, rate: {self.sample_rate}) ---")
             
@@ -80,14 +87,8 @@ class SarvamASRService:
             # Sarvam's SDK expects a base64 encoded string
             encoded_audio = base64.b64encode(audio_chunk).decode("utf-8")
             
-            # --- THIS IS THE CORRECTED CALL BASED ON DOCS ---
-            # The docs show that 'transcribe' takes the audio data,
-            # and the encoding/rate are set on *connect*.
-            # However, the Python examples *also* put it in transcribe().
-            # Let's follow the specific Python "Basic Streaming" example.
             await self.ws.transcribe(
                 audio=encoded_audio,
-                # We specify the encoding of the audio *chunk*
                 encoding="pcm", # This should match our codec
                 sample_rate=self.sample_rate
             )
@@ -101,8 +102,15 @@ class SarvamASRService:
         if self._listener_task:
             self._listener_task.cancel()
             self._listener_task = None
+        
+        # --- FIX: We must manually exit the context manager ---
+        if self.ws_context_manager:
+            await self.ws_context_manager.__aexit__(None, None, None)
+            
         if self.ws:
-            await self.ws.close()
+            # The context manager should handle closing, but we'll
+            # null-check it just in case.
             self.ws = None
+            
         self._is_connected = False
         print("--- ASR Service: Connection closed. ---")
