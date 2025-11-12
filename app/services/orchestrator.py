@@ -92,6 +92,7 @@ class VivaOrchestrator:
         """
         Receives raw audio chunks from the client's WebSocket.
         """
+        print(f"--- Orchestrator: Handling audio chunk. is_processing_llm = {self.is_processing_llm} ---")
         if self.asr_service and not self.is_processing_llm:
             await self.asr_service.send_audio_chunk(audio_chunk)
 

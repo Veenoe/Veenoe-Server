@@ -87,6 +87,8 @@ class SarvamASRService:
             # Sarvam's SDK expects a base64 encoded string
             encoded_audio = base64.b64encode(audio_chunk).decode("utf-8")
             
+            print(f"--- ASR Service: Sending {len(audio_chunk)} bytes (as {len(encoded_audio)} base64) to Sarvam ---")
+            
             await self.ws.transcribe(
                 audio=encoded_audio,
                 encoding="pcm", # This should match our codec

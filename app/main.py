@@ -131,6 +131,7 @@ async def websocket_viva_endpoint(
             data = await websocket.receive()
             
             if isinstance(data, bytes):
+                print(f"--- Main: Received {len(data)} audio bytes ---")
                 await orchestrator.handle_audio_chunk(data)
             
             elif isinstance(data, str):
